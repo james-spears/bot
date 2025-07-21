@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Message, Participant, Transcript, Utterance } from './models';
 import db from './db';
 
@@ -31,13 +30,16 @@ export const promptLLM = async (text: string) => {
     .trim();
 };
 
-const getDefaultUtterance = async (sessionId: string): Promise<Utterance> => ({
-  sessionId,
-  text: 'Hello! How can I help you?',
-  participant: Participant.BOT,
-  timestamp: Date.now() + 1,
-  uuid: randomUUID(),
-});
+const getDefaultUtterance = async (message: Message): Promise<Utterance> => {
+  const { clientId, sessionId } = message;
+  return {
+    clientId,
+    sessionId,
+    text: 'Hello! How can I help you?',
+    participant: Participant.BOT,
+    timestamp: Date.now() + 1,
+  };
+};
 
 export const json = (message: Message) => JSON.stringify(message);
 
@@ -45,13 +47,12 @@ export const json = (message: Message) => JSON.stringify(message);
 //   return randomUUID();
 // };
 
-export const getTranscript = async (sessionId: string): Promise<Transcript> => {
+export const getTranscript = async (message: Message): Promise<Transcript> => {
+  const { sessionId } = message;
   // transcript does not need to be sorted
-  console.log('sessionId: ', sessionId);
   const transcript = await db.utterances.find<Utterance>({ sessionId }).toArray();
-  console.log('transcript: ', transcript);
   if (!transcript.length) {
-    const utterance = await getDefaultUtterance(sessionId);
+    const utterance = await getDefaultUtterance(message);
     const res = await db.utterances.insertOne(utterance);
     console.log('res: ', res);
     return [utterance];
@@ -60,10 +61,10 @@ export const getTranscript = async (sessionId: string): Promise<Transcript> => {
 };
 
 export const addUtteranceToTranscript = async (
-  sessionId: string,
+  message: Message,
   utterance: Utterance
 ): Promise<Transcript> => {
-  const transcript = await getTranscript(sessionId);
+  const transcript = await getTranscript(message);
   transcript.push(utterance);
   await db.utterances.insertOne(utterance);
   return transcript;

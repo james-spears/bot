@@ -12,6 +12,7 @@ export const handleConnection = (ws: WebSocket) => {
           message: 'connected successfully',
         },
         sessionId: '',
+        clientId: '',
       })
     );
   };
@@ -47,12 +48,13 @@ export const handleUnexpectedMessageType = (ws: WebSocket) => {
 
 export const handleSession = (ws: WebSocket) => {
   return async (message: Message) => {
-    const sessionId = message.sessionId ?? randomUUID();
+    const { sessionId, clientId } = message;
     ws.send(
       json({
+        clientId,
+        sessionId: sessionId ?? randomUUID(),
         type: MessageType.SESSION,
         content: null,
-        sessionId,
       })
     );
   };
@@ -60,13 +62,14 @@ export const handleSession = (ws: WebSocket) => {
 
 export const handleTranscript = (ws: WebSocket) => {
   return async (message: Message) => {
-    const sessionId = message.sessionId;
+    const { sessionId, clientId } = message;
     if (sessionId) {
       ws.send(
         json({
-          type: MessageType.TRANSCRIPT,
-          content: await getTranscript(sessionId),
+          clientId,
           sessionId,
+          type: MessageType.TRANSCRIPT,
+          content: await getTranscript(message),
         })
       );
     }
@@ -75,13 +78,15 @@ export const handleTranscript = (ws: WebSocket) => {
 
 export const handleHeartbeat = (ws: WebSocket) => {
   return async (message: Message) => {
-    if (!message.sessionId) {
+    const { clientId, sessionId } = message;
+    if (!clientId || !sessionId) {
       return;
     }
     const heartbeat = () => {
       ws.send(
         json({
-          ...message,
+          clientId,
+          sessionId,
           type: MessageType.HEARTBEAT,
           content: null,
         })
@@ -94,38 +99,39 @@ export const handleHeartbeat = (ws: WebSocket) => {
 
 export const handleChat = (ws: WebSocket) => {
   return async (message: Message) => {
-    const sessionId = message.sessionId;
-    console.log('sessionId: ', sessionId);
+    const { clientId, sessionId, content } = message;
     const userUtterance = {
+      clientId,
       sessionId,
-      text: (message.content as { text: string }).text,
+      text: (content as { text: string }).text,
       participant: Participant.USER,
       timestamp: Date.now(),
-      uuid: randomUUID(),
     };
-    await addUtteranceToTranscript(sessionId, userUtterance);
+    await addUtteranceToTranscript(message, userUtterance);
     ws.send(
       json({
-        ...message,
+        clientId,
+        sessionId,
         type: MessageType.BOT_THINKING,
-        content: `bot_thinking`,
+        content: null,
       })
     );
     const botUtterance = {
+      clientId,
       sessionId,
       text: await promptLLM((message.content as { text: string }).text),
       participant: Participant.BOT,
       timestamp: Date.now(),
-      uuid: randomUUID(),
     };
     ws.send(
       json({
-        ...message,
+        clientId,
+        sessionId,
         type: MessageType.CHAT,
         content: botUtterance,
       })
     );
-    await addUtteranceToTranscript(sessionId, botUtterance);
+    await addUtteranceToTranscript(message, botUtterance);
   };
 };
 
@@ -133,6 +139,7 @@ export const handleError = (ws: WebSocket) => {
   return (data: RawData) => {
     ws.send(
       json({
+        clientId: '',
         sessionId: '',
         type: MessageType.ERROR,
         content: `unexpected error: ${data}`,

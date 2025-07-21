@@ -1,5 +1,3 @@
-import { UUID } from 'node:crypto';
-
 export enum MessageType {
   CONNECT = 'connect',
   HEARTBEAT = 'heartbeat',
@@ -17,6 +15,7 @@ export enum MessageType {
 export interface Message {
   type: MessageType;
   content: unknown;
+  clientId: string;
   sessionId: string;
 }
 
@@ -27,11 +26,11 @@ export enum Participant {
 }
 
 export interface Utterance {
+  clientId: string;
   sessionId: string;
   text: string;
   participant: Participant;
   timestamp: number;
-  uuid?: string;
 }
 
 export type Transcript = Utterance[];
