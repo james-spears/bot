@@ -1,0 +1,18 @@
+services:
+  mongodb:
+    image: mongodb/mongodb-community-server:7.0.7-ubi8 # Or specify a specific version like mongo:6.0
+    container_name: mongodb_server
+    restart: always
+    environment:
+      - MONGODB_INITDB_ROOT_USERNAME=user
+      - MONGODB_INITDB_ROOT_PASSWORD=pass
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+
+volumes:
+  valkey_data:
+  mongodb_data:
+  mongodb_config:

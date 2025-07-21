@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Message, Participant, Transcript, Utterance } from './models';
+import db from './db';
 
 if (!process.env.GEMINI_API_KEY) throw new Error('gemini api key unset');
 if (!process.env.GEMINI_MODEL_URL) throw new Error('gemini url unset');
@@ -30,41 +31,41 @@ export const promptLLM = async (text: string) => {
     .trim();
 };
 
-const getDefaultTranscript = () => [
-  {
-    text: 'Hello! How can I help you?',
-    participant: Participant.BOT,
-    timestamp: Date.now() + 1,
-    uuid: randomUUID(),
-  },
-];
-
-const db: Record<string, Transcript> = {};
+const getDefaultUtterance = async (sessionId: string): Promise<Utterance> => ({
+  sessionId,
+  text: 'Hello! How can I help you?',
+  participant: Participant.BOT,
+  timestamp: Date.now() + 1,
+  uuid: randomUUID(),
+});
 
 export const json = (message: Message) => JSON.stringify(message);
 
-export const getSessionId = async () => {
-  return randomUUID();
-};
+// export const getSessionId = async () => {
+//   return randomUUID();
+// };
 
-export const getTranscript = async (uuid: string): Promise<Transcript> => {
+export const getTranscript = async (sessionId: string): Promise<Transcript> => {
   // transcript does not need to be sorted
-  console.log('uuid: ', uuid);
-  console.log('transcript fetched: ', db[uuid]);
-  if (!db[uuid]) {
-    db[uuid] = getDefaultTranscript();
+  console.log('sessionId: ', sessionId);
+  const transcript = await db.utterances.find<Utterance>({ sessionId }).toArray();
+  console.log('transcript: ', transcript);
+  if (!transcript.length) {
+    const utterance = await getDefaultUtterance(sessionId);
+    const res = await db.utterances.insertOne(utterance);
+    console.log('res: ', res);
+    return [utterance];
   }
-  console.log('transcript updated: ', db[uuid]);
-  return db[uuid];
+  return transcript;
 };
 
 export const addUtteranceToTranscript = async (
-  uuid: string,
+  sessionId: string,
   utterance: Utterance
 ): Promise<Transcript> => {
-  const transcript = await getTranscript(uuid);
+  const transcript = await getTranscript(sessionId);
   transcript.push(utterance);
-  db[uuid] = transcript;
+  await db.utterances.insertOne(utterance);
   return transcript;
 };
 

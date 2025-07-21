@@ -94,14 +94,16 @@ export const handleHeartbeat = (ws: WebSocket) => {
 
 export const handleChat = (ws: WebSocket) => {
   return async (message: Message) => {
-    console.log('sessionId: ', message.sessionId);
+    const sessionId = message.sessionId;
+    console.log('sessionId: ', sessionId);
     const userUtterance = {
+      sessionId,
       text: (message.content as { text: string }).text,
       participant: Participant.USER,
       timestamp: Date.now(),
       uuid: randomUUID(),
     };
-    await addUtteranceToTranscript(message.sessionId, userUtterance);
+    await addUtteranceToTranscript(sessionId, userUtterance);
     ws.send(
       json({
         ...message,
@@ -110,6 +112,7 @@ export const handleChat = (ws: WebSocket) => {
       })
     );
     const botUtterance = {
+      sessionId,
       text: await promptLLM((message.content as { text: string }).text),
       participant: Participant.BOT,
       timestamp: Date.now(),
@@ -122,7 +125,7 @@ export const handleChat = (ws: WebSocket) => {
         content: botUtterance,
       })
     );
-    await addUtteranceToTranscript(message.sessionId, botUtterance);
+    await addUtteranceToTranscript(sessionId, botUtterance);
   };
 };
 

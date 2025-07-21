@@ -7,11 +7,12 @@ export default [
   {
     input: 'src/index.ts',
     output: {
-      file: './dist/index.cjs',
-      format: 'cjs',
+      file: './dist/index.js',
+      format: 'es',
       exports: 'named',
       sourcemap: true,
     },
+    external: ['iovalkey', 'mongodb'],
     plugins: [
       commonjs(),
       json(),

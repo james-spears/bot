@@ -27,10 +27,11 @@ export enum Participant {
 }
 
 export interface Utterance {
+  sessionId: string;
   text: string;
   participant: Participant;
   timestamp: number;
-  uuid?: UUID;
+  uuid?: string;
 }
 
 export type Transcript = Utterance[];
