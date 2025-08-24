@@ -3,13 +3,14 @@ export enum MessageType {
   HEARTBEAT = 'heartbeat',
   DISCONNECT = 'disconnect',
   ECHO = 'echo',
+  START = 'start',
   CHAT = 'chat',
   ERROR = 'error',
-  AGENT_TYPING = 'agent_typing',
+  TYPING = 'typing',
   SESSION = 'session',
-  BOT_THINKING = 'bot_thinking',
+  THINKING = 'thinking',
   TRANSCRIPT = 'transcript',
-  UNEXPECTED_MESSAGE_TYPE = 'unexpected_message_type',
+  UNEXPECTED = 'unexpected',
 }
 
 export interface Message {
@@ -34,3 +35,7 @@ export interface Utterance {
 }
 
 export type Transcript = Utterance[];
+
+export interface Models {
+  messgage: Message;
+}

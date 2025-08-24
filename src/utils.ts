@@ -1,34 +1,9 @@
 import { Message, Participant, Transcript, Utterance } from './models';
 import db from './db';
+import validators from './validators';
 
 if (!process.env.GEMINI_API_KEY) throw new Error('gemini api key unset');
 if (!process.env.GEMINI_MODEL_URL) throw new Error('gemini url unset');
-
-export const promptLLM = async (text: string) => {
-  const res = await fetch(process.env.GEMINI_MODEL_URL || '', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-goog-api-key': process.env.GEMINI_API_KEY || '',
-    },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [
-            {
-              text,
-            },
-          ],
-        },
-      ],
-    }),
-  });
-  const json = await res.json();
-  return json.candidates[0].content.parts
-    .map((part: { text: string }) => part.text)
-    .reduce((acc: string, val: string) => acc + '\n' + val, '')
-    .trim();
-};
 
 const getDefaultUtterance = async (message: Message): Promise<Utterance> => {
   const { clientId, sessionId } = message;
@@ -41,7 +16,12 @@ const getDefaultUtterance = async (message: Message): Promise<Utterance> => {
   };
 };
 
-export const json = (message: Message) => JSON.stringify(message);
+export const json = (message: Message) =>
+  validators.message(message)
+    ? JSON.stringify(message)
+    : (() => {
+        throw new Error('cannot return invalid message');
+      })();
 
 // export const getSessionId = async () => {
 //   return randomUUID();

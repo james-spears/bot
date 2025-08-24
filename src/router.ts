@@ -9,23 +9,28 @@ import {
 } from './handlers';
 import { RawData } from 'ws';
 import { Message, MessageType } from './models';
+import validators from './validators';
 // test
-export default (ws: WebSocket) => {
+export default (ws: WebSocket & { sessionId?: string; }) => {
   return async (data: RawData): Promise<void> => {
     try {
       const message: Message = JSON.parse(data.toString());
-      switch (message.type) {
-        case MessageType.CHAT:
-          return handleChat(ws)(message);
-        case MessageType.SESSION:
-          return handleSession(ws)(message);
-        case MessageType.TRANSCRIPT:
-          return handleTranscript(ws)(message);
-        case MessageType.HEARTBEAT:
-          return handleHeartbeat(ws)(message);
-        case MessageType.ECHO:
-        default:
-          return handleUnexpectedMessageType(ws)(message);
+      const valid = validators.message(message);
+      if (valid) {
+        switch (message.type) {
+          case MessageType.CHAT:
+            return handleChat(ws)(message);
+          case MessageType.SESSION:
+            return handleSession(ws)(message);
+          case MessageType.TRANSCRIPT:
+            return handleTranscript(ws)(message);
+          case MessageType.HEARTBEAT:
+            return handleHeartbeat(ws)(message);
+          default:
+            return handleUnexpectedMessageType(ws)(message);
+        }
+      } else {
+        throw new Error(`message is invalid: ${JSON.stringify(validators.message.errors)}`);
       }
     } catch (e) {
       console.error(e);

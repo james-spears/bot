@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "Message": {
+      "additionalProperties": false,
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "content": {},
+        "sessionId": {
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/definitions/MessageType"
+        }
+      },
+      "required": [
+        "type",
+        "content",
+        "clientId",
+        "sessionId"
+      ],
+      "type": "object"
+    },
+    "MessageType": {
+      "enum": [
+        "connect",
+        "heartbeat",
+        "disconnect",
+        "echo",
+        "start",
+        "chat",
+        "error",
+        "typing",
+        "session",
+        "thinking",
+        "transcript",
+        "unexpected"
+      ],
+      "type": "string"
+    },
+    "Models": {
+      "additionalProperties": false,
+      "properties": {
+        "messgage": {
+          "$ref": "#/definitions/Message"
+        }
+      },
+      "required": [
+        "messgage"
+      ],
+      "type": "object"
+    },
+    "Participant": {
+      "enum": [
+        "bot",
+        "agent",
+        "user"
+      ],
+      "type": "string"
+    },
+    "Transcript": {
+      "items": {
+        "$ref": "#/definitions/Utterance"
+      },
+      "type": "array"
+    },
+    "Utterance": {
+      "additionalProperties": false,
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "participant": {
+          "$ref": "#/definitions/Participant"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "timestamp": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "clientId",
+        "sessionId",
+        "text",
+        "participant",
+        "timestamp"
+      ],
+      "type": "object"
+    }
+  }
+}
+

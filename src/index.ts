@@ -4,6 +4,7 @@ import express from 'express';
 import { WebSocketServer } from 'ws';
 import router from './router';
 import { handleClose, handleConnection } from './handlers';
+import { clients } from './cnx';
 
 const app = express();
 const port = 8080;
@@ -20,6 +21,8 @@ const wss = new WebSocketServer({ server });
 // Handle WebSocket connections
 wss.on('connection', async (ws) => {
   console.log('client connected');
+
+  clients.add(ws); // Add new client to the set of all clients
 
   // Handle messages from clients
   ws.on('message', router(ws));

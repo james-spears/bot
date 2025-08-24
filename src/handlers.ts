@@ -1,7 +1,9 @@
 import { WebSocket, RawData } from 'ws';
-import { addUtteranceToTranscript, getTranscript, json, promptLLM } from './utils';
+import { addUtteranceToTranscript, getTranscript, json } from './utils';
 import { Message, MessageType, Participant } from './models';
 import { randomUUID } from 'node:crypto';
+import prompt from './ai';
+import { rooms } from './cnx';
 
 export const handleConnection = (ws: WebSocket) => {
   return () => {
@@ -39,7 +41,7 @@ export const handleUnexpectedMessageType = (ws: WebSocket) => {
     ws.send(
       json({
         ...message,
-        type: MessageType.UNEXPECTED_MESSAGE_TYPE,
+        type: MessageType.UNEXPECTED,
         content: `received unexpected message type: ${message.type}`,
       })
     );
@@ -48,15 +50,31 @@ export const handleUnexpectedMessageType = (ws: WebSocket) => {
 
 export const handleSession = (ws: WebSocket) => {
   return async (message: Message) => {
+    if (!message.sessionId) {
+      message.sessionId = randomUUID();
+    }
     const { sessionId, clientId } = message;
+    if (!rooms[sessionId]) {
+      rooms[sessionId] = []; // Create room if it doesn't exist
+    }
+    rooms[sessionId].push(ws);
+    (ws as WebSocket & { sessionId: string }).sessionId = sessionId; // Assign sessionId to the client's WebSocket object
+    console.log(`Client ${clientId} joined room ${sessionId}`);
+    // Notify clients in the room about the new member
+    rooms[sessionId].forEach((client) => {
+      if (client !== ws && client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({ type: 'joined', clientId }));
+      }
+    });
     ws.send(
       json({
         clientId,
-        sessionId: sessionId ?? randomUUID(),
+        sessionId,
         type: MessageType.SESSION,
-        content: null,
+        content: '',
       })
     );
+    handleTranscript(ws)(message);
   };
 };
 
@@ -88,7 +106,7 @@ export const handleHeartbeat = (ws: WebSocket) => {
           clientId,
           sessionId,
           type: MessageType.HEARTBEAT,
-          content: null,
+          content: '',
         })
       );
     };
@@ -97,41 +115,31 @@ export const handleHeartbeat = (ws: WebSocket) => {
   };
 };
 
-export const handleChat = (ws: WebSocket) => {
+export const handleChat = (ws: WebSocket & { sessionId?: string }) => {
   return async (message: Message) => {
     const { clientId, sessionId, content } = message;
-    const userUtterance = {
+    await addUtteranceToTranscript(message, {
       clientId,
       sessionId,
       text: (content as { text: string }).text,
       participant: Participant.USER,
       timestamp: Date.now(),
-    };
-    await addUtteranceToTranscript(message, userUtterance);
-    ws.send(
-      json({
-        clientId,
-        sessionId,
-        type: MessageType.BOT_THINKING,
-        content: null,
-      })
-    );
-    const botUtterance = {
-      clientId,
-      sessionId,
-      text: await promptLLM((message.content as { text: string }).text),
-      participant: Participant.BOT,
-      timestamp: Date.now(),
-    };
-    ws.send(
-      json({
-        clientId,
-        sessionId,
-        type: MessageType.CHAT,
-        content: botUtterance,
-      })
-    );
-    await addUtteranceToTranscript(message, botUtterance);
+    });
+    if (ws.sessionId && rooms[ws.sessionId]) {
+      rooms[ws.sessionId].forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(
+            json({
+              clientId,
+              sessionId,
+              type: MessageType.THINKING,
+              content: '',
+            })
+          );
+        }
+      });
+    }
+    await addUtteranceToTranscript(message, await prompt(ws)(message));
   };
 };
 
